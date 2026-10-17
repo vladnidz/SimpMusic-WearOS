@@ -1582,13 +1582,8 @@ class YouTube(
     }
 
     private fun preferredPlayerClients(): List<YouTubeClient> =
-        if (isWatch) {
-            // Wear strict mode: keep stream signing deterministic and avoid cross-client URL churn.
-            listOf(ANDROID_VR)
-        } else {
-            // InnerTune-style first chain, followed by web fallbacks.
-            listOf(ANDROID_MUSIC, IOS, TVHTML5, WEB_REMIX, WEB, MWEB)
-        }.distinctBy { it.clientName }
+        // Use full reliable clients chain (Android Music, iOS, TVHTML5) to stream directly from Google CDN without dead proxies
+        listOf(ANDROID_MUSIC, IOS, TVHTML5, ANDROID_VR, WEB_REMIX, WEB, MWEB).distinctBy { it.clientName }
 
     private fun toProbeCandidates(response: PlayerResponse?): List<ProbeCandidate> {
         val streamingData = response?.streamingData ?: return emptyList()
