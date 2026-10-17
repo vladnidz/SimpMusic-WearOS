@@ -107,11 +107,12 @@ fun LoginScreen(
 
     fun resolveReachablePhoneNodes(onResolved: (List<Node>) -> Unit) {
         val appCtx = context.applicationContext
-        val capabilityClient = Wearable.getCapabilityClient(appCtx)
-        val nodeClient = Wearable.getNodeClient(appCtx)
+        try {
+            val capabilityClient = Wearable.getCapabilityClient(appCtx)
+            val nodeClient = Wearable.getNodeClient(appCtx)
 
-        capabilityClient
-            .getCapability(PHONE_CAPABILITY, CapabilityClient.FILTER_REACHABLE)
+            capabilityClient
+                .getCapability(PHONE_CAPABILITY, CapabilityClient.FILTER_REACHABLE)
             .addOnSuccessListener { reachable ->
                 val reachableNodes = reachable.nodes.toList()
                 if (reachableNodes.isNotEmpty()) {
@@ -142,8 +143,11 @@ fun LoginScreen(
                             }
                     }
             }.addOnFailureListener { e ->
-                setFailure(e.message ?: "Failed to query phone reachability.")
+                setFailure("Google Wear API недоступен на часах Huawei. Используйте автономный поиск и воспроизведение.")
             }
+        } catch (e: Exception) {
+            setFailure("Huawei Watch не поддерживает Google Wearable API. Вы можете искать и слушать любую музыку автономно!")
+        }
     }
 
     fun sendMessageToNodes(
