@@ -30,6 +30,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.material.icons.filled.Close
+
 import androidx.wear.compose.material3.FilledTonalButton
 import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.Icon
@@ -83,27 +91,37 @@ fun SearchScreen(
     var searchLoading by remember(query) { mutableStateOf(false) }
     var searchError by remember(query) { mutableStateOf<String?>(null) }
 
+    var showInlineInput by rememberSaveable { mutableStateOf(false) }
+    var inputText by rememberSaveable { mutableStateOf("") }
+
     val keyboardLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode != Activity.RESULT_OK) return@rememberLauncherForActivityResult
             val data = result.data ?: return@rememberLauncherForActivityResult
             val input = RemoteInput.getResultsFromIntent(data)
             val typed = input?.getCharSequence(SEARCH_REMOTE_INPUT_KEY)?.toString()?.trim().orEmpty()
-            if (typed.isBlank()) return@rememberLauncherForActivityResult
-            query = typed
+            if (typed.isNotBlank()) {
+                query = typed
+                inputText = typed
+            }
         }
 
     fun openWearKeyboard() {
-        val remoteInputs =
-            listOf(
-                RemoteInput
-                    .Builder(SEARCH_REMOTE_INPUT_KEY)
-                    .setLabel("Search music")
-                    .build(),
-            )
-        val intent = RemoteInputIntentHelper.createActionRemoteInputIntent()
-        RemoteInputIntentHelper.putRemoteInputsExtra(intent, remoteInputs)
-        keyboardLauncher.launch(intent)
+        try {
+            val remoteInputs =
+                listOf(
+                    RemoteInput
+                        .Builder(SEARCH_REMOTE_INPUT_KEY)
+                        .setLabel("Поиск музыки / Search")
+                        .build(),
+                )
+            val intent = RemoteInputIntentHelper.createActionRemoteInputIntent()
+            RemoteInputIntentHelper.putRemoteInputsExtra(intent, remoteInputs)
+            keyboardLauncher.launch(intent)
+        } catch (e: Exception) {
+            // Fallback for Huawei Watch without Google Wear Input
+            showInlineInput = true
+        }
     }
 
     LaunchedEffect(query) {
@@ -267,16 +285,62 @@ fun SearchScreen(
         }
 
         item {
-            FilledTonalButton(
-                onClick = { openWearKeyboard() },
-                modifier = Modifier.fillMaxWidth(),
-                colors =
-                    ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f),
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ),
-            ) {
-                Text("Search on watch")
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BasicTextField(
+                        value = inputText,
+                        onValueChange = { inputText = it },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        textStyle = TextStyle(
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = MaterialTheme.typography.bodyMedium.fontSize
+                        ),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = {
+                            if (inputText.isNotBlank()) query = inputText.trim()
+                        }),
+                        decorationBox = { innerTextField ->
+                            if (inputText.isEmpty()) {
+                                Text(
+                                    text = "Поиск / Search...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                            }
+                            innerTextField()
+                        }
+                    )
+                    if (inputText.isNotEmpty()) {
+                        IconButton(
+                            onClick = {
+                                inputText = ""
+                                query = ""
+                            },
+                            modifier = Modifier.padding(start = 4.dp)
+                        ) {
+                            Icon(Icons.Filled.Close, contentDescription = "Очистить")
+                        }
+                    }
+                    IconButton(
+                        onClick = {
+                            if (inputText.isNotBlank()) query = inputText.trim()
+                        },
+                        modifier = Modifier.padding(start = 4.dp)
+                    ) {
+                        Icon(Icons.Filled.Search, contentDescription = "Искать")
+                    }
+                }
             }
         }
 
