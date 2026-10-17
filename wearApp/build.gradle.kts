@@ -28,6 +28,9 @@ android {
 
         // Keep it simple for the first buildable Wear target.
         vectorDrawables.useSupportLibrary = true
+        ndk {
+            abiFilters.add("arm64-v8a")
+        }
     }
 
     buildTypes {
